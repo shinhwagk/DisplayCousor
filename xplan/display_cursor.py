@@ -19,7 +19,9 @@ sqlidSQL = """SELECT
     access_predicates,
     filter_predicates,
     time,
-    plan_hash_value
+    plan_hash_value，
+    partition_start,
+    partition_stop
 FROM v$sql_plan
 WHERE sql_id = :sql_id AND child_number = :child_number
 ORDER BY id, parent_id"""
@@ -81,10 +83,14 @@ def format_sp_id(rs):
 
 def format_sp_operation(rs):
     """format sql plan"""
-    c_ot_v = [noneToEmptyStr(v) for v in get_colume_name_colume(rs, "OPERATION")[1:]]
-    c_o_v = [noneToEmptyStr(v) for v in get_colume_name_colume(rs, "OPTIONS")[1:]]
-    c_d_v = [noneToEmptyStr(v) for v in get_colume_name_colume(rs, "DEPTH")[1:]]
-    n_operation = [' '.join(i) if len(i[1]) >= 1 else i[0] for i in zip(c_ot_v, c_o_v)]
+    c_ot_v = [noneToEmptyStr(v)
+              for v in get_colume_name_colume(rs, "OPERATION")[1:]]
+    c_o_v = [noneToEmptyStr(v)
+             for v in get_colume_name_colume(rs, "OPTIONS")[1:]]
+    c_d_v = [noneToEmptyStr(v)
+             for v in get_colume_name_colume(rs, "DEPTH")[1:]]
+    n_operation = [' '.join(i) if len(i[1]) >= 1 else i[0]
+                   for i in zip(c_ot_v, c_o_v)]
     n_d_operation = [''.join([' ']*d) + o for o, d in zip(n_operation, c_d_v)]
     n_d_operation.insert(0, 'OPERATION')
     return format_sp_align(n_d_operation, 1)
@@ -153,9 +159,35 @@ def format_sp_table(rs, plan_hash_value):
 
 def format_sp_name(rs):
     """format sql plan"""
-    n_name = [noneToEmptyStr(v) for v in get_colume_name_colume(rs, "OBJECT_NAME")]
+    n_name = [noneToEmptyStr(v)
+              for v in get_colume_name_colume(rs, "OBJECT_NAME")]
     n_name[0] = "NAME"
     return format_sp_align(n_name, 1)
+
+
+def format_sp_part(rs):
+    """format sql plan"""
+    pst = get_colume_name_colume(rs, "PARTITION_START")[1:]
+    psp = get_colume_name_colume(rs, "PARTITION_STOP")[1:]
+    n_pst = []
+    n_psp = []
+    is_part = False
+    for [t, p] in zip(pst, psp):
+        if t is None:
+            n_pst.append('')
+            n_psp.append('')
+        else:
+            is_part = True
+            n_pst.append(str(t))
+            n_psp.append(str(p))
+    if is_part:
+        t = format_sp_align(n_pst, 1)
+        t.insert(0, 'PSTART')
+        p = format_sp_align(n_psp, 1)
+        p.insert(0, 'PSTOP')
+        return is_part, t, p
+    else:
+        return is_part, None, None
 
 
 def format_sp_rows(rs):
@@ -167,7 +199,7 @@ def format_sp_rows(rs):
         if v is None:
             n_rows.append('')
         else:
-            if v >= 1000:
+            if v >= 10000:
                 afr = True
                 if v >= 1000 * 1000 * 1000:
                     n_rows.append("%.1fG" % v/(1000 * 1000 * 1000))
@@ -194,7 +226,7 @@ def format_sp_bytes(rs):
         if v is None:
             n_bytes.append('')
         else:
-            if v >= 1024:
+            if v >= 10000:
                 afr = True
                 if v >= 1024 * 1024 * 1024:
                     n_bytes.append("%.1fG" % (v/(1024 * 1024 * 1024)))
@@ -221,7 +253,11 @@ def format_sp_combine(rs):
     n_rows = format_sp_rows(rs)
     n_bytes = format_sp_bytes(rs)
     n_time = format_sp_time(rs)
-    return list(zip(n_id, n_operation, n_name, n_rows, n_bytes, n_cost, n_time))
+    is_part, n_part_t, n_part_p = format_sp_part(rs)
+    if is_part:
+        return list(zip(n_id, n_operation, n_name, n_rows, n_bytes, n_cost, n_time, n_part_t, n_part_p))
+    else:
+        return list(zip(n_id, n_operation, n_name, n_rows, n_bytes, n_cost, n_time))
 
 
 def format_sp(rs, sql_id, child_number):
@@ -247,9 +283,7 @@ def format_pi(rs):
     c_i_v = get_colume_name_colume(rs, "ID")[1:]
     c_fp_v = get_colume_name_colume(rs, "FILTER_PREDICATES")[1:]
     c_ap_v = get_colume_name_colume(rs, "ACCESS_PREDICATES")[1:]
-
     t_pi = []
-
     for i, [fp, ap] in list(enumerate(zip(c_fp_v, c_ap_v))):
         if fp is not None:
             t_pi.append([c_i_v[i], "filter", fp])
