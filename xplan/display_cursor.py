@@ -39,7 +39,7 @@ def query(connect, sql, **kps):
         cns = [c[0] for c in c.description]  # colume name set
         rs.insert(0, cns)
     c.close()
-    return rs
+    return dict([(col[0], list(col[1:])) for col in zip(*rs)])
 
 
 def query_sql_full_text(connect, sql_id):
@@ -50,22 +50,11 @@ def query_xplan_by_sql_id(connect, sql_id, child_number):
     return query(connect, sqlPlanSQL, sql_id=sql_id, child_number=child_number)
 
 
-def get_colume_name_index(rs, cn):
-    for idx, val in list(enumerate(rs[0])):
-        if val == cn:
-            return idx
-
-
-def get_colume_name_colume(rs, n):
-    i = get_colume_name_index(rs, n)
-    return [r[i] for r in rs]
-
-
 def format_sp_id(rs):
     """format sql plan"""
-    c_id_v = get_colume_name_colume(rs, "ID")[1:]
-    c_fp_v = get_colume_name_colume(rs, "FILTER_PREDICATES")[1:]
-    c_ap_v = get_colume_name_colume(rs, "ACCESS_PREDICATES")[1:]
+    c_id_v = rs["ID"]
+    c_fp_v = rs["FILTER_PREDICATES"]
+    c_ap_v = rs["ACCESS_PREDICATES"]
     c_id_max_len = len(str(max(c_id_v)))
     c_id = []
     for i, [fp_v, ap_v] in list(enumerate(zip(c_fp_v, c_ap_v))):
@@ -80,14 +69,10 @@ def format_sp_id(rs):
 
 def format_sp_operation(rs):
     """format sql plan"""
-    c_ot_v = [noneToEmptyStr(v)
-              for v in get_colume_name_colume(rs, "OPERATION")[1:]]
-    c_o_v = [noneToEmptyStr(v)
-             for v in get_colume_name_colume(rs, "OPTIONS")[1:]]
-    c_d_v = [noneToEmptyStr(v)
-             for v in get_colume_name_colume(rs, "DEPTH")[1:]]
-    n_operation = [' '.join(i) if len(i[1]) >= 1 else i[0]
-                   for i in zip(c_ot_v, c_o_v)]
+    c_ot_v = [noneToEmptyStr(v) for v in rs["OPERATION"]]
+    c_o_v = [noneToEmptyStr(v) for v in rs["OPTIONS"]]
+    c_d_v = [noneToEmptyStr(v) for v in rs["DEPTH"]]
+    n_operation = ["%s%s" % (ot, ' ' + o) for ot, o in zip(c_ot_v, c_o_v)]
     n_d_operation = [''.join([' ']*d) + o for o, d in zip(n_operation, c_d_v)]
     n_d_operation.insert(0, 'OPERATION')
     return format_sp_align(n_d_operation, 1)
@@ -95,20 +80,16 @@ def format_sp_operation(rs):
 
 def format_sp_cost(rs):
     """format sql plan"""
-    c_c_v = get_colume_name_colume(rs, "COST")[1:]
-    c_ic_v = get_colume_name_colume(rs, "IO_COST")[1:]
+    c_c_v = rs["COST"]
+    c_ic_v = rs["IO_COST"]
     r = []
     l = []
-    for i, [c, ic] in list(enumerate(zip(c_c_v, c_ic_v))):
-        if i == 0:
-            r.append("(100)")
-            l.append(c)
-            continue
+    for _, [c, ic] in list(enumerate(zip(c_c_v, c_ic_v))):
         if c is None:
             r.append("")
             l.append("")
         else:
-            rate = 0 if ic == 0 else (c - ic) / c * 100
+            rate = 100 if ic is None else (c - ic) / c * 100
             r.append("(%d)" % rate)
             l.append(c)
     r_max_len = max([len(v) for v in r])
@@ -119,7 +100,7 @@ def format_sp_cost(rs):
 
 def format_sp_time(rs):
     """format sql plan"""
-    t = get_colume_name_colume(rs, "TIME")[1:]
+    t = rs["TIME"]
     n_time = []
     for tv in t:
         if tv is not None:
@@ -162,16 +143,15 @@ def format_sp_table(rs, plan_hash_value):
 
 def format_sp_name(rs):
     """format sql plan"""
-    n_name = [noneToEmptyStr(v)
-              for v in get_colume_name_colume(rs, "OBJECT_NAME")]
-    n_name[0] = "NAME"
+    n_name = [noneToEmptyStr(v) for v in rs["OBJECT_NAME"]]
+    n_name.insert(0, "NAME")
     return format_sp_align(n_name, 1)
 
 
 def format_sp_part(rs):
     """format sql plan"""
-    pst = get_colume_name_colume(rs, "PARTITION_START")[1:]
-    psp = get_colume_name_colume(rs, "PARTITION_STOP")[1:]
+    pst = rs["PARTITION_START"]
+    psp = rs["PARTITION_STOP"]
     n_pst = []
     n_psp = []
     is_part = False
@@ -198,7 +178,7 @@ def format_sp_rows(rs):
     n_rows = []
     afr = False
     afr_arr = []
-    for i, v in list(enumerate(get_colume_name_colume(rs, "CARDINALITY")[1:])):
+    for i, v in list(enumerate(rs["CARDINALITY"])):
         if v is None:
             n_rows.append('')
         else:
@@ -225,7 +205,7 @@ def format_sp_bytes(rs):
     n_bytes = []
     afr = False
     afr_arr = []
-    for i, v in list(enumerate(get_colume_name_colume(rs, "BYTES")[1:])):
+    for i, v in list(enumerate(rs["BYTES"])):
         if v is None:
             n_bytes.append('')
         else:
@@ -264,16 +244,15 @@ def format_sp_combine(rs):
 
 
 def format_sp(rs, sql_id, child_number):
-    phv = get_colume_name_colume(rs, 'PLAN_HASH_VALUE')[1]
+    phv = rs['PLAN_HASH_VALUE'][1]
     sc = format_sp_combine(rs)
     return format_sp_table(sc, phv)
 
 
 def format_st(c, sql_id, child_number):
     "SQL_ID  sql_id, child number child_number"
-    tit = "SQL_ID  %s, child number %s" % (sql_id, child_number)
-    tit_ = ''.rjust(len(tit), '-')
-    return [tit, tit_] + [t[0] for t in query_sql_full_text(c, sql_id)[1:]]
+
+    return query_sql_full_text(c, sql_id)["SQL_TEXT"]
 
 
 def format_qbn():
@@ -283,9 +262,9 @@ def format_qbn():
 
 def format_pi(rs):
     "Predicate Information (identified by operation id):"
-    c_i_v = get_colume_name_colume(rs, "ID")[1:]
-    c_fp_v = get_colume_name_colume(rs, "FILTER_PREDICATES")[1:]
-    c_ap_v = get_colume_name_colume(rs, "ACCESS_PREDICATES")[1:]
+    c_i_v = rs["ID"]
+    c_fp_v = rs["FILTER_PREDICATES"]
+    c_ap_v = rs["ACCESS_PREDICATES"]
     t_pi = []
     for i, [fp, ap] in list(enumerate(zip(c_fp_v, c_ap_v))):
         if fp is not None:
@@ -297,7 +276,7 @@ def format_pi(rs):
     pi = []
     for i, x, fa in t_pi:
         pi.append("   %d - %s(%s)" % (i, x, fa))
-    return [tit, tit_, ''] + pi if len(pi)>=1 else []
+    return [tit, tit_, ''] + pi if len(pi) >= 1 else []
 
 
 def format_cpi():
@@ -310,13 +289,15 @@ def parse_args():
 
 
 def dc_main(dsn, sql_id, child_number):
+    tit = "SQL_ID  %s, child number %s" % (sql_id, child_number)
+    tit_ = ''.rjust(len(tit), '-')
     c = cx_Oracle.connect(dsn)
     rs = query_xplan_by_sql_id(c, sql_id, child_number)
     sp = format_sp(rs, sql_id, child_number)
     st = format_st(c, sql_id, child_number)
     pi = format_pi(rs)
     c.close()
-    return st + [''] + sp + [''] + pi
+    return [tit, tit_] + st + [''] + sp + [''] + pi
 
 
 class display_cursor:

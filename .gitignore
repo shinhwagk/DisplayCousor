@@ -3,3 +3,4 @@ __pycache__
 /xplan.egg-info
 /build
 /.vscode
+/test.py
