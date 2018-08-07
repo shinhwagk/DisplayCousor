@@ -290,7 +290,7 @@ def parse_args():
 
 def dc_main(dsn, sql_id, child_number):
     tit = "SQL_ID  %s, child number %s" % (sql_id, child_number)
-    tit_ = ''.rjust(len(tit), '-')
+    tit_ = '-' * len(tit)
     c = cx_Oracle.connect(dsn)
     rs = query_xplan_by_sql_id(c, sql_id, child_number)
     sp = format_sp(rs, sql_id, child_number)
