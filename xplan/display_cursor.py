@@ -99,12 +99,18 @@ def format_sp_cost(rs):
     c_ic_v = get_colume_name_colume(rs, "IO_COST")[1:]
     r = []
     l = []
-    for _, [c, ic] in list(enumerate(zip(c_c_v, c_ic_v))):
-        n_ic = 0 if ic is None else ic
-        n_c = 0 if c is None else c
-        rate = 0 if n_c == 0 or n_ic == 0 else (n_c - n_ic) / n_c * 100
-        r.append("(%d)" % rate)
-        l.append(n_c)
+    for i, [c, ic] in list(enumerate(zip(c_c_v, c_ic_v))):
+        if i == 0:
+            r.append("(100)")
+            l.append(c)
+            continue
+        if c is None:
+            r.append("")
+            l.append("")
+        else:
+            rate = 0 if ic == 0 else (c - ic) / c * 100
+            r.append("(%d)" % rate)
+            l.append(c)
     r_max_len = max([len(v) for v in r])
     cost = ["%s %s" % (str(lv), rv.rjust(r_max_len)) for lv, rv in zip(l, r)]
     cost.insert(0, "COST (%CPU)")
