@@ -1,11 +1,8 @@
-import sys
 import argparse
-import os
 
 import cx_Oracle
 
-# select username from v$session group by username;
-sqlidSQL = """SELECT
+sqlPlanSQL = """SELECT
     id,
     operation,
     depth,
@@ -50,7 +47,7 @@ def query_sql_full_text(connect, sql_id):
 
 
 def query_xplan_by_sql_id(connect, sql_id, child_number):
-    return query(connect, sqlidSQL, sql_id=sql_id, child_number=child_number)
+    return query(connect, sqlPlanSQL, sql_id=sql_id, child_number=child_number)
 
 
 def get_colume_name_index(rs, cn):
@@ -105,11 +102,11 @@ def format_sp_cost(rs):
     for _, [c, ic] in list(enumerate(zip(c_c_v, c_ic_v))):
         n_ic = 0 if ic is None else ic
         n_c = 0 if c is None else c
-        x = 0 if n_c == 0 or n_ic == 0 else (n_c - n_ic) / n_c * 100
-        r.append("(%d)" % x)
+        rate = 0 if n_c == 0 or n_ic == 0 else (n_c - n_ic) / n_c * 100
+        r.append("(%d)" % rate)
         l.append(n_c)
-    r_max_len = len(max(r))
-    cost = ["%s  %s" % (str(lv), rv.rjust(r_max_len)) for lv, rv in zip(l, r)]
+    r_max_len = max([len(v) for v in r])
+    cost = ["%s %s" % (str(lv), rv.rjust(r_max_len)) for lv, rv in zip(l, r)]
     cost.insert(0, "COST (%CPU)")
     return format_sp_align(cost, 0)
 
@@ -291,12 +288,10 @@ def format_pi(rs):
             t_pi.append([c_i_v[i], "access", ap])
     tit = "Predicate Information (identified by operation id):"
     tit_ = ''.rjust(len(tit), '-')
-
     pi = []
     for i, x, fa in t_pi:
         pi.append("   %d - %s(%s)" % (i, x, fa))
-
-    return [tit, tit_, ''] + pi
+    return [tit, tit_, ''] + pi if len(pi)>=1 else []
 
 
 def format_cpi():
