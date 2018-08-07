@@ -7,7 +7,7 @@ pip install xplan
 
 #### command line tools
 ```sh
-python -m display_cursor -dsn username/password@ip:port/service_name -sql_id xxx -child_number 0
+python -m xplan -dsn username/password@ip:port/service_name -sql_id xxx -child_number 0
 ```
 
 #### simple api
