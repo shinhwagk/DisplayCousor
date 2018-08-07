@@ -109,7 +109,7 @@ def format_sp_cost(rs):
         r.append("(%d)" % x)
         l.append(n_c)
     r_max_len = len(max(r))
-    cost = ["%s %s" % (str(lv), rv.rjust(r_max_len)) for lv, rv in zip(l, r)]
+    cost = ["%s  %s" % (str(lv), rv.rjust(r_max_len)) for lv, rv in zip(l, r)]
     cost.insert(0, "COST (%CPU)")
     return format_sp_align(cost, 0)
 
