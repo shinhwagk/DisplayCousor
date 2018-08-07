@@ -181,10 +181,10 @@ def format_sp_part(rs):
             n_pst.append(str(t))
             n_psp.append(str(p))
     if is_part:
-        t = format_sp_align(n_pst, 1)
-        t.insert(0, 'PSTART')
-        p = format_sp_align(n_psp, 1)
-        p.insert(0, 'PSTOP')
+        n_pst.insert(0, 'PSTART')
+        t = format_sp_align(n_pst, 0)
+        n_psp.insert(0, 'PSTOP')
+        p = format_sp_align(n_psp, 0)
         return is_part, t, p
     else:
         return is_part, None, None
