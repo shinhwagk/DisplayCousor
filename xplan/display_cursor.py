@@ -89,7 +89,7 @@ def format_sp_cost(rs):
             r.append("")
             l.append("")
         else:
-            rate = 100 if ic is None else (c - ic) / c * 100
+            rate = 0 if c == 0 else (c - (ic or 0)) / c * 100
             r.append("(%d)" % rate)
             l.append(c)
     r_max_len = max([len(v) for v in r])
@@ -121,9 +121,9 @@ def format_sp_align(c, i):
     c_max_len = max([len(v) for v in c])
     cn = (" " + c[0]).ljust(c_max_len+2)
     if i == 0:
-        return [cn] + [" " + v.rjust(c_max_len) + " " for v in c[1:]]
+        return [cn] + [v.rjust(c_max_len + 1) + " " for v in c[1:]]
     else:
-        return [cn] + [" " + v.ljust(c_max_len) + " " for v in c[1:]]
+        return [cn] + [" " + v.ljust(c_max_len + 1) for v in c[1:]]
 
 
 def format_sp_table(rs, plan_hash_value):
@@ -132,12 +132,12 @@ def format_sp_table(rs, plan_hash_value):
     trs.append("Plan hash value: %s" % plan_hash_value)
     trs.append('')
     tl = sum([len(v) for v in rs[0]]) + len(rs[0]) + 1
-    trs.append(''.rjust(tl, '-'))
+    trs.append('-' * tl)
     trs.append("|%s|" % "|".join(rs[0]))
-    trs.append(''.rjust(tl, '-'))
+    trs.append('-' * tl)
     for r in rs[1:]:
         trs.append("|"+"|".join(r)+"|")
-    trs.append(''.rjust(tl, '-'))
+    trs.append('-' * tl)
     return trs
 
 
@@ -185,9 +185,9 @@ def format_sp_rows(rs):
             if v >= 10000:
                 afr = True
                 if v >= 1000 * 1000 * 1000:
-                    n_rows.append("%.1fG" % v/(1000 * 1000 * 1000))
+                    n_rows.append("%.1fG" % (v/(1000 * 1000 * 1000)))
                 elif v >= 1000 * 1000:
-                    n_rows.append("%dM" % v//(1000 * 1000))
+                    n_rows.append("%dM" % (v//(1000 * 1000)))
                 else:
                     n_rows.append("%dK" % (v//1000))
             else:
