@@ -1,8 +1,11 @@
 from setuptools import setup, find_packages
 
+with open("VERSION")as f:
+    version = f.read()
+
 setup(
     name="xplan",
-    version="0.0.6",
+    version=version,
     packages=find_packages(),
     install_requires=['cx_Oracle'],
     author='shinhwagk',
