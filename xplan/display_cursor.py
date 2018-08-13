@@ -16,7 +16,7 @@ sqlPlanSQL = """SELECT
     access_predicates,
     filter_predicates,
     time,
-    plan_hash_value，
+    plan_hash_value,
     partition_start,
     partition_stop
 FROM v$sql_plan
