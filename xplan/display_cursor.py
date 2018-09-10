@@ -42,11 +42,11 @@ def query(connect, sql, **kps):
     return dict([(col[0], list(col[1:])) for col in zip(*rs)])
 
 
-def query_sql_full_text(connect, sql_id):
+def query_sql_text(connect, sql_id):
     return query(connect, sqlTextSQL, sql_id=sql_id)
 
 
-def query_xplan_by_sql_id(connect, sql_id, child_number):
+def query_sql_plan(connect, sql_id, child_number):
     return query(connect, sqlPlanSQL, sql_id=sql_id, child_number=child_number)
 
 
@@ -243,16 +243,14 @@ def format_sp_combine(rs):
         return list(zip(n_id, n_operation, n_name, n_rows, n_bytes, n_cost, n_time))
 
 
-def format_sp(rs, sql_id, child_number):
+def format_sp(rs):
     phv = rs['PLAN_HASH_VALUE'][1]
     sc = format_sp_combine(rs)
     return format_sp_table(sc, phv)
 
 
-def format_st(c, sql_id, child_number):
-    "SQL_ID  sql_id, child number child_number"
-
-    return query_sql_full_text(c, sql_id)["SQL_TEXT"]
+def format_st(rs):
+    return rs["SQL_TEXT"]
 
 
 def format_qbn():
@@ -284,20 +282,21 @@ def format_cpi():
     return []
 
 
-def parse_args():
-    return ""
-
-
 def dc_main(dsn, sql_id, child_number):
     tit = "SQL_ID  %s, child number %s" % (sql_id, child_number)
     tit_ = '-' * len(tit)
     c = cx_Oracle.connect(dsn)
-    rs = query_xplan_by_sql_id(c, sql_id, child_number)
-    sp = format_sp(rs, sql_id, child_number)
-    st = format_st(c, sql_id, child_number)
-    pi = format_pi(rs)
+    rs_st = query_sql_text(c, sql_id)
+    st = format_st(rs_st)
+    rs_sp = query_sql_plan(c, sql_id, child_number)
+    if len(rs_sp) >= 1:
+        sp = format_sp(rs_sp)
+        pi = format_pi(rs_sp)
+        xplan = [tit, tit_] + st + [''] + sp + [''] + pi
+    else:
+        xplan = [tit, tit_] + st + [''] + ['no sql plan.']
     c.close()
-    return [tit, tit_] + st + [''] + sp + [''] + pi
+    return xplan
 
 
 class display_cursor:
