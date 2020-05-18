@@ -34,7 +34,7 @@ def noneToEmptyStr(v):
 def query(connect, sql, **kps):
     c = connect.cursor()
     c.execute(sql, **kps)
-    rs = [[v for v in list(r)] for r in c.fetchall()]  # row set
+    rs = [[v.rstrip('\x00') for v in list(r)] for r in c.fetchall()]  # row set
     if len(rs) >= 1:
         cns = [c[0] for c in c.description]  # colume name set
         rs.insert(0, cns)
